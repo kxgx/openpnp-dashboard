@@ -160,6 +160,8 @@ function asyncHttpPostJson(url, jsonData) {
 function postToDashboard(jsonData) {
     var url = getDashboardUrl();
     if (!url) return;
+    // Cache latest state so heartbeat can resend it
+    try { config.scriptState.put("dashboard-last-status", JSON.stringify(jsonData)); } catch (e) {}
     asyncHttpPostJson(url + "/update-status", jsonData);
 }
 
@@ -172,15 +174,20 @@ if (_initUrl) {
     // Initial heartbeat
     asyncHttpPostJson(_initUrl + "/update-status", {});
 
-    // Periodic heartbeat keeps Dashboard connection alive
+    // Periodic heartbeat resends last known state
     var Timer = java.util.Timer;
     var TimerTask = java.util.TimerTask;
     var heartbeat = new Timer("dashboard-hb", true);
     heartbeat.schedule(new TimerTask({ run: function() {
         var url = null;
+        var data = {};
         try { url = config.scriptState.get(DASHBOARD_URL_KEY); } catch (e) {}
+        try {
+            var cached = config.scriptState.get("dashboard-last-status");
+            if (cached) data = JSON.parse(cached);
+        } catch (e) {}
         if (url) {
-            asyncHttpPostJson(url + "/update-status", {});
+            asyncHttpPostJson(url + "/update-status", data);
         }
     }}), 8000, 8000);
 }
