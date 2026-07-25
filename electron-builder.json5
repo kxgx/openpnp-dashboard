@@ -2,12 +2,11 @@
   $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   appId: "com.corebb.openpnpdashboard",
   asar: true,
-  asarUnpack: ["server/**"],
   productName: "OpenPnP-Dashboard",
   directories: {
     output: "release/${version}",
   },
-  files: ["dist", "dist-electron", "server"],
+  files: ["dist", "dist-electron"],
   mac: {
     target: ["dmg"],
     artifactName: "${productName}-Mac-${version}-Installer.${ext}",

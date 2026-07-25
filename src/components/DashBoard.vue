@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive } from 'vue'
 import airFlow from '../assets/airFlow.json'
 
 interface Nozzle {
@@ -166,23 +166,10 @@ const elapsedText = computed(() => {
 })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
-const connected = ref(false)
+const connected = true // IPC-based, always connected when window is open
 
-const API_BASE = window.location.hostname === 'localhost'
-  ? 'http://127.0.0.1:10064'
-  : `http://${window.location.hostname}:10064`
-
-async function pollStatus() {
-  try {
-    const res = await fetch(`${API_BASE}/status`)
-    if (res.ok) {
-      const data = await res.json()
-      Object.assign(status, data)
-      connected.value = true
-    }
-  } catch {
-    connected.value = false
-  }
+function handleStatusUpdate(_event: unknown, data: MachineStatus) {
+  Object.assign(status, data)
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
@@ -191,16 +178,12 @@ function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
 
 onMounted(() => {
   window.ipcRenderer.on('connection-info', handleConnectionInfo)
-  pollTimer = setInterval(pollStatus, 500)
-  pollStatus()
+  window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
 })
 
 onBeforeUnmount(() => {
   window.ipcRenderer.off('connection-info', handleConnectionInfo)
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+  window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
 })
 </script>
 
