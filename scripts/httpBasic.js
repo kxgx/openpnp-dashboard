@@ -160,8 +160,17 @@ function asyncHttpPostJson(url, jsonData) {
 function postToDashboard(jsonData) {
     var url = getDashboardUrl();
     if (!url) return;
-    // Cache latest state so heartbeat can resend it
-    try { config.scriptState.put("dashboard-last-status", JSON.stringify(jsonData)); } catch (e) {}
+    // Merge with existing cache so heartbeat carries full state
+    try {
+        var cached = config.scriptState.get("dashboard-last-status");
+        var merged = cached ? JSON.parse(cached) : {};
+        for (var key in jsonData) {
+            if (jsonData.hasOwnProperty(key)) {
+                merged[key] = jsonData[key];
+            }
+        }
+        config.scriptState.put("dashboard-last-status", JSON.stringify(merged));
+    } catch (e) {}
     asyncHttpPostJson(url + "/update-status", jsonData);
 }
 
