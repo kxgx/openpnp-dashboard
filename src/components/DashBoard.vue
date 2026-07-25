@@ -79,17 +79,17 @@
     <div class="z-20 flex items-center justify-between px-[5%] pb-[2%] text-gray-400 select-none"
       :style="{ fontSize: `clamp(0.5rem, 1.2vw, 1rem)` }">
       <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        <span class="w-2 h-2 rounded-full animate-pulse" :class="connected ? 'bg-green-400' : 'bg-red-400'"></span>
         <span>{{ connectionInfo.host }}:{{ connectionInfo.httpPort }}</span>
         <span class="text-gray-600">| UDP :{{ connectionInfo.discoveryPort }}</span>
       </div>
-      <span class="text-gray-600 text-xs">{{ connectionInfo.host !== '...' ? '已连接' : '检测中...' }}</span>
+      <span class="text-gray-600 text-xs">{{ connected ? '已连接' : '未连接' }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, reactive } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import airFlow from '../assets/airFlow.json'
 
 interface Nozzle {
@@ -166,6 +166,7 @@ const elapsedText = computed(() => {
 })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
+const connected = ref(false)
 
 async function pollStatus() {
   try {
@@ -173,8 +174,11 @@ async function pollStatus() {
     if (res.ok) {
       const data = await res.json()
       Object.assign(status, data)
+      connected.value = true
     }
-  } catch { /* server not ready yet */ }
+  } catch {
+    connected.value = false
+  }
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
