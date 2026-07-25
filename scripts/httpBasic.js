@@ -1,46 +1,88 @@
 // ============================================================
 // OpenPnP Dashboard - Communication Library
 //
-// Usage:
-//   Local (same machine):  just copy scripts, no config needed
-//   Remote (LAN):          set URL via OpenPnP menu or script:
-//     config.scriptState.put("dashboard-url", "http://192.168.1.5:10064")
+// Auto-discovery: UDP broadcast → find Dashboard on LAN
+// Cache:        config.scriptState (persists across engine pool)
+// Fallback:     http://127.0.0.1:10064
 //
-// Provides: getDashboardUrl, resetDashboardUrl, asyncHttpPostJson, postToDashboard
+// Provides: getDashboardUrl, asyncHttpPostJson, postToDashboard
 // ============================================================
 
 var DASHBOARD_URL_KEY = "dashboard-url";
+var DASHBOARD_PORT = 10064;
+var DISCOVERY_PORT = 10065;
+var DISCOVERY_TIMEOUT = 2000;
 
 /**
- * Get Dashboard base URL.
- * Checks config.scriptState first (persistent), falls back to localhost.
- * No UDP discovery — instant, no firewall/network issues.
- * @returns {string} e.g. "http://127.0.0.1:10064"
+ * Discover Dashboard via UDP broadcast.
+ * @returns {string|null} e.g. "http://192.168.1.5:10064"
+ */
+function discoverDashboard() {
+    var DatagramSocket = java.net.DatagramSocket;
+    var InetAddress = java.net.InetAddress;
+    var DatagramPacket = java.net.DatagramPacket;
+
+    try {
+        var socket = new DatagramSocket();
+        socket.setSoTimeout(DISCOVERY_TIMEOUT);
+        socket.setBroadcast(true);
+
+        var msg = JSON.stringify({ type: "discover" });
+        var sendBuf = new java.lang.String(msg).getBytes("UTF-8");
+        var sendPacket = new DatagramPacket(
+            sendBuf, sendBuf.length,
+            InetAddress.getByName("255.255.255.255"),
+            DISCOVERY_PORT
+        );
+        socket.send(sendPacket);
+
+        var recvBuf = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, 1024);
+        var recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
+        socket.receive(recvPacket);
+
+        var data = new java.lang.String(recvPacket.getData(), 0, recvPacket.getLength(), "UTF-8");
+        var info = JSON.parse(data);
+        socket.close();
+        return "http://" + info.host + ":" + info.port;
+    } catch (e) {
+        try { socket.close(); } catch (e2) {}
+        return null;
+    }
+}
+
+/**
+ * Get Dashboard URL. Cache-first, then UDP discover, then localhost.
+ * @returns {string} Dashboard base URL
  */
 function getDashboardUrl() {
+    // 1. Check persistent cache
     try {
-        var url = config.scriptState.get(DASHBOARD_URL_KEY);
-        if (url) return url;
-    } catch (e) {
-        print("[Dashboard] config.scriptState unavailable, using localhost");
-    }
-    return "http://127.0.0.1:10064";
-}
-
-/**
- * Reset cached URL. Next call will default to localhost.
- */
-function resetDashboardUrl() {
-    try {
-        config.scriptState.remove(DASHBOARD_URL_KEY);
+        var cached = config.scriptState.get(DASHBOARD_URL_KEY);
+        if (cached) return cached;
     } catch (e) {}
+
+    var url = null;
+
+    // 2. Try UDP discovery on LAN
+    try {
+        url = discoverDashboard();
+        if (url) {
+            print("[Dashboard] Discovered:", url);
+            config.scriptState.put(DASHBOARD_URL_KEY, url);
+            return url;
+        }
+    } catch (e) {}
+
+    // 3. Fallback to localhost
+    url = "http://127.0.0.1:" + DASHBOARD_PORT;
+    config.scriptState.put(DASHBOARD_URL_KEY, url);
+    print("[Dashboard] Using localhost:", url);
+    return url;
 }
 
 /**
- * Send JSON data to Dashboard asynchronously via HTTP POST.
- * Runs in background thread — does not block OpenPnP.
- * @param {string} url     - Full endpoint URL
- * @param {object} jsonData - Data to send
+ * Send JSON data to Dashboard via background HTTP POST.
+ * Does NOT block OpenPnP main thread.
  */
 function asyncHttpPostJson(url, jsonData) {
     var URL = java.net.URL;
@@ -64,22 +106,20 @@ function asyncHttpPostJson(url, jsonData) {
 
             var code = connection.getResponseCode();
             if (code >= 200 && code < 300) {
-                print("[Dashboard]", "OK " + code + " → " + url);
+                print("[Dashboard]", "OK " + code);
             } else {
-                print("[Dashboard]", "FAIL " + code + " → " + url);
+                print("[Dashboard]", "FAIL " + code, url);
             }
             connection.disconnect();
         } catch (error) {
             print("[Dashboard]", "CANNOT REACH", url, "-", error);
-            resetDashboardUrl();
         }
     });
     thread.start();
 }
 
 /**
- * Convenience: POST jsonData to Dashboard /update-status.
- * @param {object} jsonData
+ * POST jsonData to /update-status.
  */
 function postToDashboard(jsonData) {
     asyncHttpPostJson(getDashboardUrl() + "/update-status", jsonData);
