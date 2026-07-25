@@ -210,7 +210,7 @@ static void json_get_str_range(const char *start, const char *end, const char *k
 
 /* ---- Minimal HTTP request parser ---- */
 typedef struct {
-    char method[8];
+    char method[16];
     char path[256];
 } HttpRequest;
 
