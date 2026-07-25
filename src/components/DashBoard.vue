@@ -17,6 +17,7 @@
           class="px-3 py-0.5 rounded-full text-xs font-semibold tracking-wide"
           :class="stateBadgeClass"
         >{{ stateLabel }}</span>
+        <span v-if="status.machineState && !status.state" class="px-3 py-0.5 rounded-full text-xs font-semibold tracking-wide bg-amber-500/20 text-amber-300 border border-amber-500/30">{{ status.machineState }}</span>
         <span class="text-gray-400 text-sm">{{ elapsedText }}</span>
       </div>
       <div class="text-gray-500 text-xs">OpenPnP Dashboard</div>
@@ -51,9 +52,10 @@
 
     <!-- Main Content -->
     <div class="flex flex-1 w-full overflow-hidden">
-      <!-- Left: Progress Circle -->
+      <!-- Left: Progress Circle (job) or Machine State (non-job) -->
       <div class="z-10 p-[3%] flex w-1/2 justify-center h-full items-center">
-        <div class="flex items-center justify-center w-full h-full">
+        <!-- Job: progress circle -->
+        <div v-if="status.state" class="flex items-center justify-center w-full h-full">
           <div class="relative w-full h-full">
             <svg class="w-full h-full" viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="15.915" fill="none" class="stroke-sky-950" stroke-width="4" />
@@ -72,6 +74,13 @@
               <div class="font-bold text-gray-100" :style="{ fontSize: `clamp(0.5rem, 10vw, 15vh)` }">{{ progress }}%</div>
               <div class="absolute top-[60%] text-gray-300 mt-1" :style="{ fontSize: `clamp(0.25rem, 2vw, 8vh)` }">{{ status.done }} / {{ status.total }}</div>
             </div>
+          </div>
+        </div>
+        <!-- Non-job: machine state display -->
+        <div v-else class="flex flex-col items-center justify-center w-full h-full">
+          <div class="text-gray-500" :style="{ fontSize: `clamp(0.5rem, 1.5vw, 1rem)` }">机器状态</div>
+          <div class="font-bold text-gray-200 tracking-wide mt-1" :style="{ fontSize: `clamp(1rem, 5vw, 8vh)` }">
+            {{ status.machineState || '待机中' }}
           </div>
         </div>
       </div>
