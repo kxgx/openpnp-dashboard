@@ -207,11 +207,11 @@ const elapsedText = computed(() => {
 })
 
 let disconnectTimer: ReturnType<typeof setTimeout> | null = null
-const connected = ref(true)
+const connected = ref(false)
+const lastUpdate = ref('等待数据...')
 
 // ---- Debug mode ----
 const debugMode = ref(false)
-const lastUpdate = ref('等待数据...')
 
 const debugJson = computed(() => {
   return JSON.stringify(status, null, 2)
@@ -221,9 +221,6 @@ function handleStatusUpdate(_event: unknown, data: MachineStatus) {
   Object.assign(status, data)
   connected.value = true
   lastUpdate.value = new Date().toLocaleTimeString()
-  // Reset disconnect timeout: if no update within 3s, mark disconnected
-  if (disconnectTimer) clearTimeout(disconnectTimer)
-  disconnectTimer = setTimeout(() => { connected.value = false }, 3000)
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
@@ -233,14 +230,11 @@ function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
 onMounted(() => {
   window.ipcRenderer.on('connection-info', handleConnectionInfo)
   window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
-  // Initial disconnect timer
-  disconnectTimer = setTimeout(() => { connected.value = false }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.ipcRenderer.off('connection-info', handleConnectionInfo)
   window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
-  if (disconnectTimer) { clearTimeout(disconnectTimer); disconnectTimer = null }
 })
 </script>
 
