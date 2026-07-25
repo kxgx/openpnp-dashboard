@@ -189,5 +189,5 @@ if (_initUrl) {
         if (url) {
             asyncHttpPostJson(url + "/update-status", data);
         }
-    }}), 8000, 8000);
+    }}), 2000, 2000);
 }
