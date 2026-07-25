@@ -164,11 +164,23 @@ function postToDashboard(jsonData) {
 }
 
 // ============================================================
-// Auto-init: trigger setup on first load if no cached URL
+// Auto-init + continuous heartbeat (every 8s)
 // ============================================================
 var _initUrl = getDashboardUrl();
 if (_initUrl) {
     print("[Dashboard] Ready:", _initUrl);
-    // Send initial heartbeat so Dashboard shows "已连接"
+    // Initial heartbeat
     asyncHttpPostJson(_initUrl + "/update-status", {});
+
+    // Periodic heartbeat keeps Dashboard connection alive
+    var Timer = java.util.Timer;
+    var TimerTask = java.util.TimerTask;
+    var heartbeat = new Timer("dashboard-hb", true);
+    heartbeat.schedule(new TimerTask({ run: function() {
+        var url = null;
+        try { url = config.scriptState.get(DASHBOARD_URL_KEY); } catch (e) {}
+        if (url) {
+            asyncHttpPostJson(url + "/update-status", {});
+        }
+    }}), 8000, 8000);
 }
