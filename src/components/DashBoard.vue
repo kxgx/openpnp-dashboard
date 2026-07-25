@@ -100,7 +100,7 @@
             <span v-if="nozzle.isPlacing" class="text-emerald-400">PLACING</span>
             <span v-if="nozzle.isVacActive && !nozzle.isPicking && !nozzle.isPlacing" class="text-sky-400">VACUUM</span>
             <span v-if="nozzle.hasComponent" class="text-purple-400">HAS PART</span>
-            <span v-if="!nozzle.isVacActive && !nozzle.hasComponent && !nozzle.isPicking && !nozzle.isPlacing" class="text-gray-600">IDLE</span>
+            <span v-if="!nozzle.isVacActive && !nozzle.hasComponent && !nozzle.isPicking && !nozzle.isPlacing" :class="status.machineState === 'HOMED' ? 'text-green-400' : 'text-gray-600'">{{ status.machineState === 'HOMED' ? '归位' : 'IDLE' }}</span>
           </div>
           <!-- Vacuum indicator -->
           <div class="z-50 w-1/4 relative">
