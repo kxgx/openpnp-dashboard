@@ -1,6 +1,6 @@
 <template>
-  <div class="w-full h-full relative bg-black">
-    <canvas ref="canvasRef" class="w-full h-full"></canvas>
+  <div class="w-full h-full relative" style="background:#111827">
+    <canvas ref="canvasRef" class="absolute inset-0"></canvas>
 
     <!-- Overlay: back button -->
     <div class="absolute top-4 left-4 z-10">
@@ -225,10 +225,8 @@ function animate() {
 
 function onResize() {
   if (!canvasRef.value || !renderer || !camera) return
-  const parent = canvasRef.value.parentElement
-  if (!parent) return
-  const w = parent.clientWidth
-  const h = parent.clientHeight
+  const w = window.innerWidth
+  const h = window.innerHeight
   renderer.setSize(w, h, false)
   camera.aspect = w / Math.max(h, 1)
   camera.updateProjectionMatrix()
