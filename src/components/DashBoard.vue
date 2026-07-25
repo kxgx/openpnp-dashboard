@@ -85,6 +85,7 @@
       </div>
       <div class="flex items-center gap-3">
         <span class="text-gray-600 text-xs">{{ connected ? '已连接' : '未连接' }}</span>
+        <span class="text-gray-600 text-xs">{{ lastUpdateText }}</span>
         <button
           class="px-2 py-0.5 rounded text-xs transition-colors"
           :class="debugMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-gray-600 hover:text-gray-400'"
@@ -209,6 +210,9 @@ const elapsedText = computed(() => {
 let disconnectTimer: ReturnType<typeof setTimeout> | null = null
 const connected = ref(false)
 const lastUpdate = ref('等待数据...')
+const lastUpdateText = computed(() => {
+  return lastUpdate.value
+})
 
 // ---- Debug mode ----
 const debugMode = ref(false)
@@ -221,6 +225,9 @@ function handleStatusUpdate(_event: unknown, data: MachineStatus) {
   Object.assign(status, data)
   connected.value = true
   lastUpdate.value = new Date().toLocaleTimeString()
+  // 10s no update → likely disconnected
+  if (disconnectTimer) clearTimeout(disconnectTimer)
+  disconnectTimer = setTimeout(() => { connected.value = false }, 10000)
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
@@ -235,6 +242,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.ipcRenderer.off('connection-info', handleConnectionInfo)
   window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
+  if (disconnectTimer) clearTimeout(disconnectTimer)
 })
 </script>
 
