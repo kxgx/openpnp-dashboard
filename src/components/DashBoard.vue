@@ -23,15 +23,30 @@
     </div>
 
     <!-- Job Info Bar -->
-    <div v-if="status.jobName" class="z-20 flex items-center gap-4 px-[5%] text-xs text-gray-400 select-none">
-      <span class="text-gray-500">任务:</span>
-      <span class="text-gray-300">{{ status.jobName }}</span>
+    <div v-if="status.jobName || status.nozzleTip || status.feederActivity" class="z-20 flex items-center gap-4 px-[5%] text-xs text-gray-400 select-none">
+      <span v-if="status.jobName">
+        <span class="text-gray-500">任务:</span>
+        <span class="text-gray-300">{{ status.jobName }}</span>
+      </span>
       <span v-if="status.placementPart" class="text-gray-600">
         | 贴装: <span class="text-sky-400">{{ status.placementPart }}</span>
         <span v-if="status.placementBoard" class="text-gray-500"> @ {{ status.placementBoard }}</span>
       </span>
-      <span v-if="status.errorMsg" class="text-red-400 ml-auto">{{ status.errorMsg }}</span>
+      <span v-if="status.nozzleTip" class="text-gray-600">
+        | 吸嘴头: <span class="text-amber-400">{{ status.nozzleTip }}</span>
+      </span>
+      <span v-if="status.feederActivity" class="text-gray-600">
+        | {{ status.feederActivity }}
+      </span>
       <span class="ml-auto text-gray-600">{{ status.machineState }}</span>
+    </div>
+
+    <!-- Warning / Error Bar -->
+    <div v-if="status.warningMsg" class="z-20 flex items-center px-[5%] text-xs select-none">
+      <span class="text-amber-400">⚠ {{ status.warningMsg }}</span>
+    </div>
+    <div v-if="status.errorMsg" class="z-20 flex items-center px-[5%] text-xs select-none">
+      <span class="text-red-400">❌ {{ status.errorMsg }}</span>
     </div>
 
     <!-- Main Content -->
@@ -164,6 +179,9 @@ interface MachineStatus {
   placementBoard: string
   machineState: string
   errorMsg: string
+  nozzleTip: string
+  feederActivity: string
+  warningMsg: string
 }
 
 interface ConnectionInfo {
@@ -182,6 +200,9 @@ const status = reactive<MachineStatus>({
   placementBoard: '',
   machineState: '',
   errorMsg: '',
+  nozzleTip: '',
+  feederActivity: '',
+  warningMsg: '',
 })
 
 const connectionInfo = reactive<ConnectionInfo>({

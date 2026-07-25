@@ -56,6 +56,9 @@ interface MachineStatus {
   placementBoard: string
   machineState: string
   errorMsg: string
+  nozzleTip: string
+  feederActivity: string
+  warningMsg: string
 }
 
 const status: MachineStatus = {
@@ -71,6 +74,9 @@ const status: MachineStatus = {
   placementBoard: '',
   machineState: '',
   errorMsg: '',
+  nozzleTip: '',
+  feederActivity: '',
+  warningMsg: '',
 }
 
 // ---- UDP Discovery ----
@@ -128,6 +134,9 @@ function startHttpServer(localIP: string) {
     if (body.placementBoard !== undefined) status.placementBoard = body.placementBoard
     if (body.machineState !== undefined) status.machineState = body.machineState
     if (body.errorMsg !== undefined) status.errorMsg = body.errorMsg
+    if (body.nozzleTip !== undefined) status.nozzleTip = body.nozzleTip
+    if (body.feederActivity !== undefined) status.feederActivity = body.feederActivity
+    if (body.warningMsg !== undefined) status.warningMsg = body.warningMsg
     if (body.nozzles) {
       for (const n of body.nozzles) {
         const existing = status.nozzles.find(s => s.id === n.id)
