@@ -59,6 +59,7 @@ interface MachineStatus {
   nozzleTip: string
   feederActivity: string
   warningMsg: string
+  coord: { x: number; y: number; z: number; rotation: number }
 }
 
 const status: MachineStatus = {
@@ -77,6 +78,7 @@ const status: MachineStatus = {
   nozzleTip: '',
   feederActivity: '',
   warningMsg: '',
+  coord: { x: 0, y: 0, z: 0, rotation: 0 },
 }
 
 // ---- UDP Discovery ----
@@ -137,6 +139,7 @@ function startHttpServer(localIP: string) {
     if (body.nozzleTip !== undefined) status.nozzleTip = body.nozzleTip
     if (body.feederActivity !== undefined) status.feederActivity = body.feederActivity
     if (body.warningMsg !== undefined) status.warningMsg = body.warningMsg
+    if (body.coord !== undefined) status.coord = body.coord
     if (body.nozzles) {
       for (const n of body.nozzles) {
         const existing = status.nozzles.find(s => s.id === n.id)

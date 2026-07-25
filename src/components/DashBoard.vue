@@ -123,6 +123,11 @@
         <span class="text-gray-600 text-xs">{{ connected ? '已连接' : '未连接' }}</span>
         <span class="text-gray-600 text-xs">{{ lastUpdateText }}</span>
         <button
+          class="px-2 py-0.5 rounded text-xs transition-colors text-gray-600 hover:text-gray-400"
+          @click="$emit('switch3d')"
+          title="3D 视图"
+        >⬡</button>
+        <button
           class="px-2 py-0.5 rounded text-xs transition-colors"
           :class="debugMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-gray-600 hover:text-gray-400'"
           @click="debugMode = !debugMode"
@@ -169,6 +174,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import airFlow from '../assets/airFlow.json'
+
+defineEmits<{ switch3d: [] }>()
 
 interface Nozzle {
   id: string
@@ -280,6 +287,16 @@ function handleStatusUpdate(_event: unknown, data: MachineStatus) {
   // 10s no update → likely disconnected
   if (disconnectTimer) clearTimeout(disconnectTimer)
   disconnectTimer = setTimeout(() => { connected.value = false }, 10000)
+  // Sync to 3D view
+  const s3d = (window as any).__3dStatus
+  const c3d = (window as any).__3dCoord
+  if (s3d) {
+    s3d.machineState = data.machineState || ''
+    s3d.state = data.state || ''
+  }
+  if (c3d && (data as any).coord) {
+    Object.assign(c3d, (data as any).coord)
+  }
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {

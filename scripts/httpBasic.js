@@ -205,6 +205,19 @@ if (_initUrl && !_hbStarted) {
             var cached = config.scriptState.get("dashboard-last-status");
             if (cached) data = JSON.parse(cached);
         } catch (e) {}
+        // Poll machine coordinates for 3D view
+        try {
+            var head = machine.getHead();
+            if (head) {
+                var loc = head.getLocation();
+                data.coord = {
+                    x: loc.getX(),
+                    y: loc.getY(),
+                    z: loc.getZ(),
+                    rotation: loc.getRotation()
+                };
+            }
+        } catch (e) { /* machine not ready */ }
         if (url) {
             asyncHttpPostJson(url + "/update-status", data);
         }
