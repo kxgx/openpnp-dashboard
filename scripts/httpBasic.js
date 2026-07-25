@@ -176,9 +176,14 @@ function postToDashboard(jsonData) {
 
 // ============================================================
 // Auto-init + continuous heartbeat (every 2s)
+// Guard: only start timer once across repeated load() calls
 // ============================================================
+var _hbStarted = false;
+try { _hbStarted = "true" === config.scriptState.get("dashboard-hb-started"); } catch (e) {}
+
 var _initUrl = getDashboardUrl();
-if (_initUrl) {
+if (_initUrl && !_hbStarted) {
+    config.scriptState.put("dashboard-hb-started", "true");
     print("[Dashboard] Ready:", _initUrl);
     // Initial heartbeat — send cached merged state (not empty)
     var _hbData = {};
