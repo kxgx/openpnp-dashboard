@@ -1,11 +1,25 @@
 import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
 import express from 'express'
 import bodyParser from 'body-parser'
+import dgram from 'node:dgram'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Get local network IP (non-internal IPv4)
+function getLocalIP(): string {
+  const interfaces = os.networkInterfaces()
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]!) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address
+      }
+    }
+  }
+  return '127.0.0.1'
+}
 
 // The built directory structure
 //
@@ -40,13 +54,16 @@ if (!app.requestSingleInstanceLock()) {
 
 let win: BrowserWindow | null = null
 let httpServer: ReturnType<typeof import('http').Server> | null = null
+let discoverySocket: dgram.Socket | null = null
+const DISCOVERY_PORT = 10065
+const HTTP_PORT = 10064
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 // Status Server Function
 function startStatusServer() {
   const serverApp = express()
-  const PORT = 10064
+  const PORT = HTTP_PORT
 
   // Middleware
   serverApp.use(bodyParser.json())
@@ -103,12 +120,34 @@ function startStatusServer() {
     res.json(machineStatus)
   })
 
-  // Start the server
-  httpServer = serverApp.listen(PORT, () => {
+  // Start the server on all interfaces
+  httpServer = serverApp.listen(PORT, '0.0.0.0', () => {
     console.log(`Machine Status API running on port ${PORT}`)
   })
 
   return serverApp
+}
+
+// UDP Discovery Service - responds to broadcast discovery requests
+function startDiscoveryService() {
+  const localIP = getLocalIP()
+  discoverySocket = dgram.createSocket('udp4')
+
+  discoverySocket.on('message', (msg, rinfo) => {
+    try {
+      const request = JSON.parse(msg.toString())
+      if (request.type === 'discover') {
+        const response = JSON.stringify({ type: 'openpnp-dashboard', host: localIP, port: HTTP_PORT })
+        discoverySocket!.send(response, rinfo.port, rinfo.address, (err) => {
+          if (err) console.error('Discovery response error:', err)
+        })
+      }
+    } catch { /* ignore malformed packets */ }
+  })
+
+  discoverySocket.bind(DISCOVERY_PORT, () => {
+    console.log(`Discovery service listening on UDP ${DISCOVERY_PORT}`)
+  })
 }
 
 async function createWindow() {
@@ -147,6 +186,8 @@ async function createWindow() {
 
   // Start the status server
   startStatusServer()
+  // Start UDP discovery for remote OpenPnP instances
+  startDiscoveryService()
 }
 
 app.whenReady().then(createWindow)
@@ -190,6 +231,9 @@ ipcMain.handle('open-win', (_, arg) => {
 
 // Optional: Add a handler to stop the server when the app is quitting
 app.on('will-quit', () => {
+  if (discoverySocket) {
+    discoverySocket.close()
+  }
   if (httpServer) {
     httpServer.close()
   }
