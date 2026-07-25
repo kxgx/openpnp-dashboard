@@ -37,7 +37,7 @@ const status: MachineStatus = {
 
 // ---- UDP Discovery ----
 function startDiscovery(localIP: string) {
-  const server = dgram.createSocket('udp4')
+  const server = dgram.createSocket({ type: 'udp4', reuseAddr: true })
   server.bind(DISCOVERY_PORT, '0.0.0.0', () => {
     console.log(`UDP discovery on 0.0.0.0:${DISCOVERY_PORT} (host: ${localIP})`)
   })
