@@ -31,15 +31,15 @@ function discoverDashboard() {
         var msg = JSON.stringify({ type: "discover" });
         var sendBuf = new java.lang.String(msg).getBytes("UTF-8");
 
-        // Broadcast 1: limited broadcast (same subnet only)
-        var packet1 = new DatagramPacket(
+        // 1. localhost unicast (same machine, always works)
+        var packetLocal = new DatagramPacket(
             sendBuf, sendBuf.length,
-            InetAddress.getByName("255.255.255.255"),
+            InetAddress.getByName("127.0.0.1"),
             DISCOVERY_PORT
         );
-        socket.send(packet1);
+        socket.send(packetLocal);
 
-        // Broadcast 2: subnet-directed broadcast (reach other subnets)
+        // 2. Subnet-directed broadcast (same subnet, different machine)
         try {
             var localHost = InetAddress.getLocalHost();
             var ip = localHost.getHostAddress();
@@ -47,14 +47,22 @@ function discoverDashboard() {
             if (parts.length === 4) {
                 parts[3] = "255";
                 var subnetBcast = InetAddress.getByName(parts.join("."));
-                var packet2 = new DatagramPacket(
+                var packetSubnet = new DatagramPacket(
                     sendBuf, sendBuf.length,
                     subnetBcast,
                     DISCOVERY_PORT
                 );
-                socket.send(packet2);
+                socket.send(packetSubnet);
             }
-        } catch (e2) { /* localhost lookup failed, skip subnet broadcast */ }
+        } catch (e2) { /* skip subnet broadcast */ }
+
+        // 3. Limited broadcast (all subnets)
+        var packetGlobal = new DatagramPacket(
+            sendBuf, sendBuf.length,
+            InetAddress.getByName("255.255.255.255"),
+            DISCOVERY_PORT
+        );
+        socket.send(packetGlobal);
 
         var recvBuf = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, 1024);
         var recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
