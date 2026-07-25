@@ -4,10 +4,10 @@
 //           asyncHttpPostJson, postToDashboard
 // ============================================================
 
-var DASHBOARD_URL = null;
-var DISCOVERY_TIMEOUT = 2000;
 var DASHBOARD_PORT = 10064;
 var DISCOVERY_PORT = 10065;
+var DISCOVERY_TIMEOUT = 2000;
+var STATE_KEY = "dashboard-url";
 
 /**
  * Discover Dashboard via UDP broadcast on the local network.
@@ -48,33 +48,38 @@ function discoverDashboard() {
 
 /**
  * Get cached Dashboard URL, or discover + cache it.
+ * Uses config.scriptState for persistence across engine pool recycling.
  * Falls back to localhost if discovery fails.
  * @returns {string} Dashboard base URL
  */
 function getDashboardUrl() {
-    if (DASHBOARD_URL !== null) return DASHBOARD_URL;
+    // Persist across scripting engine pool recycling (OpenPnP >= 2.3)
+    var cached = config.scriptState.get(STATE_KEY);
+    if (cached !== null) return cached;
 
     var discovered = discoverDashboard();
     if (discovered !== null) {
-        DASHBOARD_URL = discovered;
-        print("[Dashboard]", "Discovered at:", DASHBOARD_URL);
-        return DASHBOARD_URL;
+        config.scriptState.put(STATE_KEY, discovered);
+        print("[Dashboard]", "Discovered at:", discovered);
+        return discovered;
     }
 
-    DASHBOARD_URL = "http://127.0.0.1:" + DASHBOARD_PORT;
-    print("[Dashboard]", "Using fallback:", DASHBOARD_URL);
-    return DASHBOARD_URL;
+    var fallback = "http://127.0.0.1:" + DASHBOARD_PORT;
+    config.scriptState.put(STATE_KEY, fallback);
+    print("[Dashboard]", "Using fallback:", fallback);
+    return fallback;
 }
 
 /**
  * Reset cached URL. Next getDashboardUrl() call will re-discover.
  */
 function resetDashboardUrl() {
-    DASHBOARD_URL = null;
+    config.scriptState.remove(STATE_KEY);
 }
 
 /**
  * Send JSON data to Dashboard asynchronously via HTTP POST.
+ * Runs in background thread to avoid blocking OpenPnP.
  * @param {string} url     - Full endpoint URL
  * @param {object} jsonData - Data to send
  */
