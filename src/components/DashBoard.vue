@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, reactive } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import airFlow from '../assets/airFlow.json'
 
 interface Nozzle {
@@ -166,10 +166,11 @@ const elapsedText = computed(() => {
 })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
-const connected = true // IPC-based, always connected when window is open
+const connected = ref(true)
 
 function handleStatusUpdate(_event: unknown, data: MachineStatus) {
   Object.assign(status, data)
+  connected.value = true
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
@@ -179,11 +180,14 @@ function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
 onMounted(() => {
   window.ipcRenderer.on('connection-info', handleConnectionInfo)
   window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
+  // Fallback: mark disconnected if no IPC update within 3s
+  pollTimer = setInterval(() => { connected.value = false }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.ipcRenderer.off('connection-info', handleConnectionInfo)
   window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
 })
 </script>
 
