@@ -95,10 +95,24 @@ function getDashboardUrl() {
         }
     } catch (e) {}
 
-    // 3. Fallback to localhost
-    url = "http://127.0.0.1:" + DASHBOARD_PORT;
+    // 3. UDP failed — popup dialog for manual IP input
+    var JOptionPane = javax.swing.JOptionPane;
+    var ip = JOptionPane.showInputDialog(
+        null,
+        "UDP 自动发现失败。\n请输入 Dashboard 机器的 IP 地址:",
+        "Dashboard 未找到",
+        JOptionPane.QUESTION_MESSAGE
+    );
+
+    if (ip && ip.trim()) {
+        url = "http://" + ip.trim() + ":" + DASHBOARD_PORT;
+    } else {
+        // User cancelled — fallback to localhost
+        url = "http://127.0.0.1:" + DASHBOARD_PORT;
+    }
+
     config.scriptState.put(DASHBOARD_URL_KEY, url);
-    print("[Dashboard] Using localhost:", url);
+    print("[Dashboard] Using:", url);
     return url;
 }
 
