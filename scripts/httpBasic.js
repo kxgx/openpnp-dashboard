@@ -1,132 +1,85 @@
 // ============================================================
-// OpenPnP Dashboard - Shared Communication Library
-// Provides: discoverDashboard, getDashboardUrl, resetDashboardUrl,
-//           asyncHttpPostJson, postToDashboard
+// OpenPnP Dashboard - Communication Library
+//
+// Usage:
+//   Local (same machine):  just copy scripts, no config needed
+//   Remote (LAN):          set URL via OpenPnP menu or script:
+//     config.scriptState.put("dashboard-url", "http://192.168.1.5:10064")
+//
+// Provides: getDashboardUrl, resetDashboardUrl, asyncHttpPostJson, postToDashboard
 // ============================================================
 
-var DASHBOARD_PORT = 10064;
-var DISCOVERY_PORT = 10065;
-var DISCOVERY_TIMEOUT = 2000;
-var STATE_KEY = "dashboard-url";
+var DASHBOARD_URL_KEY = "dashboard-url";
 
 /**
- * Discover Dashboard via UDP broadcast on the local network.
- * @returns {string|null} Dashboard URL (e.g. "http://192.168.1.5:10064") or null
- */
-function discoverDashboard() {
-    var DatagramSocket = java.net.DatagramSocket;
-    var InetAddress = java.net.InetAddress;
-    var DatagramPacket = java.net.DatagramPacket;
-
-    try {
-        var socket = new DatagramSocket();
-        socket.setSoTimeout(DISCOVERY_TIMEOUT);
-        socket.setBroadcast(true);
-
-        var msg = JSON.stringify({ type: "discover" });
-        var sendBuf = new java.lang.String(msg).getBytes("UTF-8");
-        var sendPacket = new DatagramPacket(
-            sendBuf, sendBuf.length,
-            InetAddress.getByName("255.255.255.255"),
-            DISCOVERY_PORT
-        );
-        socket.send(sendPacket);
-
-        var recvBuf = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, 1024);
-        var recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
-        socket.receive(recvPacket);
-
-        var data = new java.lang.String(recvPacket.getData(), 0, recvPacket.getLength(), "UTF-8");
-        var info = JSON.parse(data);
-        socket.close();
-        return "http://" + info.host + ":" + info.port;
-    } catch (e) {
-        try { socket.close(); } catch (e2) {}
-        return null;
-    }
-}
-
-/**
- * Get cached Dashboard URL, or discover + cache it.
- * Uses config.scriptState for persistence across engine pool recycling.
- * Falls back to localhost if discovery fails.
- * @returns {string} Dashboard base URL
+ * Get Dashboard base URL.
+ * Checks config.scriptState first (persistent), falls back to localhost.
+ * No UDP discovery — instant, no firewall/network issues.
+ * @returns {string} e.g. "http://127.0.0.1:10064"
  */
 function getDashboardUrl() {
-    // Persist across scripting engine pool recycling (OpenPnP >= 2.3)
-    var cached = config.scriptState.get(STATE_KEY);
-    if (cached !== null) return cached;
-
-    var discovered = discoverDashboard();
-    if (discovered !== null) {
-        config.scriptState.put(STATE_KEY, discovered);
-        print("[Dashboard]", "Discovered at:", discovered);
-        return discovered;
+    try {
+        var url = config.scriptState.get(DASHBOARD_URL_KEY);
+        if (url) return url;
+    } catch (e) {
+        print("[Dashboard] config.scriptState unavailable, using localhost");
     }
-
-    var fallback = "http://127.0.0.1:" + DASHBOARD_PORT;
-    config.scriptState.put(STATE_KEY, fallback);
-    print("[Dashboard]", "Using fallback:", fallback);
-    return fallback;
+    return "http://127.0.0.1:10064";
 }
 
 /**
- * Reset cached URL. Next getDashboardUrl() call will re-discover.
+ * Reset cached URL. Next call will default to localhost.
  */
 function resetDashboardUrl() {
-    config.scriptState.remove(STATE_KEY);
+    try {
+        config.scriptState.remove(DASHBOARD_URL_KEY);
+    } catch (e) {}
 }
 
 /**
  * Send JSON data to Dashboard asynchronously via HTTP POST.
- * Runs in background thread to avoid blocking OpenPnP.
+ * Runs in background thread — does not block OpenPnP.
  * @param {string} url     - Full endpoint URL
  * @param {object} jsonData - Data to send
  */
 function asyncHttpPostJson(url, jsonData) {
     var URL = java.net.URL;
+    var Thread = java.lang.Thread;
 
-    var thread = new java.lang.Thread(function () {
+    var thread = new Thread(function () {
         try {
             var connection = new URL(url).openConnection();
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Accept", "application/json");
             connection.setDoOutput(true);
 
             var jsonString = JSON.stringify(jsonData);
-            var outputStream = connection.getOutputStream();
-            var writer = new java.io.OutputStreamWriter(outputStream, "UTF-8");
+            var writer = new java.io.OutputStreamWriter(
+                connection.getOutputStream(), "UTF-8"
+            );
             writer.write(jsonString);
             writer.close();
 
-            var responseCode = connection.getResponseCode();
-            var reader = new java.io.BufferedReader(
-                new java.io.InputStreamReader(connection.getInputStream())
-            );
-
-            var response = "";
-            var inputLine;
-            while ((inputLine = reader.readLine()) !== null) {
-                response += inputLine;
+            var code = connection.getResponseCode();
+            if (code >= 200 && code < 300) {
+                print("[Dashboard]", "OK " + code + " → " + url);
+            } else {
+                print("[Dashboard]", "FAIL " + code + " → " + url);
             }
-            reader.close();
-
-            var responseData = JSON.parse(response);
-            print("[Dashboard]", "OK", responseCode, "-", response);
-            return responseData;
+            connection.disconnect();
         } catch (error) {
-            print("[Dashboard]", "Error:", error);
+            print("[Dashboard]", "CANNOT REACH", url, "-", error);
             resetDashboardUrl();
-            return null;
         }
     });
     thread.start();
 }
 
 /**
- * Convenience: auto-discover Dashboard and POST jsonData.
- * @param {object} jsonData - Data to send to /update-status
+ * Convenience: POST jsonData to Dashboard /update-status.
+ * @param {object} jsonData
  */
 function postToDashboard(jsonData) {
     asyncHttpPostJson(getDashboardUrl() + "/update-status", jsonData);
