@@ -162,3 +162,11 @@ function postToDashboard(jsonData) {
     if (!url) return;
     asyncHttpPostJson(url + "/update-status", jsonData);
 }
+
+// ============================================================
+// Auto-init: trigger setup on first load if no cached URL
+// ============================================================
+var _initUrl = getDashboardUrl();
+if (_initUrl) {
+    print("[Dashboard] Ready:", _initUrl);
+}
