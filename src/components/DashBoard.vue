@@ -23,7 +23,7 @@
     </div>
 
     <!-- Job Info Bar -->
-    <div v-if="status.jobName || status.nozzleTip || status.feederActivity" class="z-20 flex items-center gap-4 px-[5%] text-xs text-gray-400 select-none">
+    <div v-if="status.jobName || status.nozzleTip || status.feederActivity || status.machineState" class="z-20 flex items-center gap-4 px-[5%] text-xs text-gray-400 select-none">
       <span v-if="status.jobName">
         <span class="text-gray-500">任务:</span>
         <span class="text-gray-300">{{ status.jobName }}</span>
