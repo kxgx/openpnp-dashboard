@@ -22,6 +22,18 @@
       <div class="text-gray-500 text-xs">OpenPnP Dashboard</div>
     </div>
 
+    <!-- Job Info Bar -->
+    <div v-if="status.jobName" class="z-20 flex items-center gap-4 px-[5%] text-xs text-gray-400 select-none">
+      <span class="text-gray-500">任务:</span>
+      <span class="text-gray-300">{{ status.jobName }}</span>
+      <span v-if="status.placementPart" class="text-gray-600">
+        | 贴装: <span class="text-sky-400">{{ status.placementPart }}</span>
+        <span v-if="status.placementBoard" class="text-gray-500"> @ {{ status.placementBoard }}</span>
+      </span>
+      <span v-if="status.errorMsg" class="text-red-400 ml-auto">{{ status.errorMsg }}</span>
+      <span class="ml-auto text-gray-600">{{ status.machineState }}</span>
+    </div>
+
     <!-- Main Content -->
     <div class="flex flex-1 w-full overflow-hidden">
       <!-- Left: Progress Circle -->
@@ -147,6 +159,11 @@ interface MachineStatus {
   total: number
   nozzles: Nozzle[]
   state: string
+  jobName: string
+  placementPart: string
+  placementBoard: string
+  machineState: string
+  errorMsg: string
 }
 
 interface ConnectionInfo {
@@ -160,6 +177,11 @@ const status = reactive<MachineStatus>({
   total: 0,
   nozzles: [{ id: 'N1' }, { id: 'N2' }],
   state: '',
+  jobName: '',
+  placementPart: '',
+  placementBoard: '',
+  machineState: '',
+  errorMsg: '',
 })
 
 const connectionInfo = reactive<ConnectionInfo>({

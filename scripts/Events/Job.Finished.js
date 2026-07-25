@@ -7,5 +7,7 @@ var totalActivePlacements = job.getTotalActivePlacements();
 postToDashboard({
     done: totalActivePlacements,
     total: totalActivePlacements,
-    state: "COMPLETED"
+    state: "COMPLETED",
+    jobName: job.getName(),
+    machineState: machine.isEnabled() ? "ENABLED" : "DISABLED"
 });

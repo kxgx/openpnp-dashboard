@@ -51,6 +51,11 @@ interface MachineStatus {
   total: number
   nozzles: Nozzle[]
   state: string
+  jobName: string
+  placementPart: string
+  placementBoard: string
+  machineState: string
+  errorMsg: string
 }
 
 const status: MachineStatus = {
@@ -61,6 +66,11 @@ const status: MachineStatus = {
     { id: 'N2', isPicking: false, isPlacing: false, isVacActive: false, hasComponent: false },
   ],
   state: '',
+  jobName: '',
+  placementPart: '',
+  placementBoard: '',
+  machineState: '',
+  errorMsg: '',
 }
 
 // ---- UDP Discovery ----
@@ -113,6 +123,11 @@ function startHttpServer(localIP: string) {
     if (body.done !== undefined) status.done = body.done
     if (body.total !== undefined) status.total = body.total
     if (body.state !== undefined) status.state = body.state
+    if (body.jobName !== undefined) status.jobName = body.jobName
+    if (body.placementPart !== undefined) status.placementPart = body.placementPart
+    if (body.placementBoard !== undefined) status.placementBoard = body.placementBoard
+    if (body.machineState !== undefined) status.machineState = body.machineState
+    if (body.errorMsg !== undefined) status.errorMsg = body.errorMsg
     if (body.nozzles) {
       for (const n of body.nozzles) {
         const existing = status.nozzles.find(s => s.id === n.id)

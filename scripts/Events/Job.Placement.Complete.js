@@ -5,7 +5,14 @@ load(scripting.getScriptsDirectory().getAbsolutePath() + "/httpBasic.js");
 var totalActivePlacements = job.getTotalActivePlacements();
 var activePlacements = job.getActivePlacements();
 
+var partId = "";
+var boardName = "";
+try { partId = placement.getPart().getId(); } catch (e) {}
+try { boardName = placement.getBoardLocation().getBoard().getName(); } catch (e) {}
+
 postToDashboard({
     done: totalActivePlacements - activePlacements,
-    total: totalActivePlacements
+    total: totalActivePlacements,
+    placementPart: partId,
+    placementBoard: boardName
 });
