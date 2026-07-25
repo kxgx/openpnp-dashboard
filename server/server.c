@@ -147,7 +147,7 @@ static void update_status(const char *json) {
     if (total >= 0) g_status.total = total;
     char state[32];
     json_get_str(json, "state", state, sizeof(state));
-    if (state[0]) strncpy(g_status.state, state, sizeof(g_status.state) - 1);
+    if (state[0]) snprintf(g_status.state, sizeof(g_status.state), "%s", state);
 
     /* Parse nozzles array: find "nozzles":[{...},{...}] */
     const char *arr = strstr(json, "\"nozzles\"");
@@ -173,7 +173,7 @@ static void update_status(const char *json) {
                     /* Extract fields from this nozzle object */
                     char nid[16];
                     json_get_str_range(p, obj_end, "id", nid, sizeof(nid));
-                    if (nid[0]) strncpy(g_status.n_ids[i], nid, sizeof(g_status.n_ids[i]) - 1);
+                    if (nid[0]) snprintf(g_status.n_ids[i], sizeof(g_status.n_ids[i]), "%s", nid);
                     
                     g_status.n_isPicking[i]   = json_get_bool_range(p, obj_end, "isPicking");
                     g_status.n_isPlacing[i]   = json_get_bool_range(p, obj_end, "isPlacing");
@@ -231,14 +231,14 @@ static int parse_http_request(const char *data, int len, HttpRequest *req) {
     p = strchr(p, ' ');
     if (!p) return 0;
     *p++ = '\0';
-    strncpy(req->method, method, sizeof(req->method) - 1);
+    snprintf(req->method, sizeof(req->method), "%s", method);
 
     /* Path */
     while (*p == ' ') p++;
     char *path = p;
     p = strchr(p, ' ');
     if (p) *p = '\0';
-    strncpy(req->path, path, sizeof(req->path) - 1);
+    snprintf(req->path, sizeof(req->path), "%s", path);
 
     return 1;
 }
