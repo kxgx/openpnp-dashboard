@@ -165,12 +165,15 @@ const elapsedText = computed(() => {
   return `进度 ${pct}%`
 })
 
-let pollTimer: ReturnType<typeof setInterval> | null = null
+let disconnectTimer: ReturnType<typeof setTimeout> | null = null
 const connected = ref(true)
 
 function handleStatusUpdate(_event: unknown, data: MachineStatus) {
   Object.assign(status, data)
   connected.value = true
+  // Reset disconnect timeout: if no update within 3s, mark disconnected
+  if (disconnectTimer) clearTimeout(disconnectTimer)
+  disconnectTimer = setTimeout(() => { connected.value = false }, 3000)
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
@@ -180,14 +183,14 @@ function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
 onMounted(() => {
   window.ipcRenderer.on('connection-info', handleConnectionInfo)
   window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
-  // Fallback: mark disconnected if no IPC update within 3s
-  pollTimer = setInterval(() => { connected.value = false }, 3000)
+  // Initial disconnect timer
+  disconnectTimer = setTimeout(() => { connected.value = false }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.ipcRenderer.off('connection-info', handleConnectionInfo)
   window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  if (disconnectTimer) { clearTimeout(disconnectTimer); disconnectTimer = null }
 })
 </script>
 
