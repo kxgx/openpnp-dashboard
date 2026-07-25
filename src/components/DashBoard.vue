@@ -44,6 +44,13 @@
         </div>
       </div>
     </div>
+    <!-- Connection Info -->
+    <div class="z-20 absolute bottom-3 left-5 flex items-center gap-2 text-gray-400 select-none"
+      :style="{ fontSize: `clamp(0.5rem, 1.2vw, 1rem)` }">
+      <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+      <span>{{ connectionInfo.host }}:{{ connectionInfo.httpPort }}</span>
+      <span class="text-gray-600">| UDP :{{ connectionInfo.discoveryPort }}</span>
+    </div>
   </div>
 </template>
 
@@ -66,11 +73,23 @@ interface MachineStatus {
   state: string
 }
 
+interface ConnectionInfo {
+  host: string
+  httpPort: number
+  discoveryPort: number
+}
+
 const status = reactive<MachineStatus>({
   done: 0,
   total: 0,
   nozzles: [{ id: 'N1' }, { id: 'N2' }],
   state: '',
+})
+
+const connectionInfo = reactive<ConnectionInfo>({
+  host: '...',
+  httpPort: 10064,
+  discoveryPort: 10065,
 })
 
 const progress = computed(() => {
@@ -83,12 +102,18 @@ function handleStatusUpdate(_event: unknown, newStatus: MachineStatus) {
   Object.assign(status, newStatus)
 }
 
+function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
+  Object.assign(connectionInfo, info)
+}
+
 onMounted(() => {
   window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
+  window.ipcRenderer.on('connection-info', handleConnectionInfo)
 })
 
 onBeforeUnmount(() => {
   window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
+  window.ipcRenderer.off('connection-info', handleConnectionInfo)
 })
 </script>
 

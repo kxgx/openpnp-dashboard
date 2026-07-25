@@ -174,7 +174,9 @@ async function createWindow() {
 
   // Test actively push message to the Electron-Renderer
   win.webContents.on('did-finish-load', () => {
+    const localIP = getLocalIP()
     win?.webContents.send('main-process-message', new Date().toLocaleString())
+    win?.webContents.send('connection-info', { host: localIP, httpPort: HTTP_PORT, discoveryPort: DISCOVERY_PORT })
   })
 
   // Make all links open with the browser, not with the application
