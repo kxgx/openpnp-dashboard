@@ -168,9 +168,13 @@ const elapsedText = computed(() => {
 let pollTimer: ReturnType<typeof setInterval> | null = null
 const connected = ref(false)
 
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://127.0.0.1:10064'
+  : `http://${window.location.hostname}:10064`
+
 async function pollStatus() {
   try {
-    const res = await fetch('http://127.0.0.1:10064/status')
+    const res = await fetch(`${API_BASE}/status`)
     if (res.ok) {
       const data = await res.json()
       Object.assign(status, data)

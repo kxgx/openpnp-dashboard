@@ -374,7 +374,11 @@ static THREAD_RET http_thread(THREAD_ARG arg) {
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
         sock_t client = accept(server, (struct sockaddr*)&client_addr, &client_len);
+#ifdef _WIN32
+        if (client == INVALID_SOCKET) continue;
+#else
         if (client == -1) continue;
+#endif
 
 #ifdef _WIN32
         DWORD tid;
