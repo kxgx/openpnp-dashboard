@@ -3,7 +3,7 @@ import DashBoard from "./components/DashBoard.vue";
 </script>
 
 <template>
-  <DashBoard msg="Electron + Vite + Vue" />
+  <DashBoard />
 </template>
 
 <style></style>

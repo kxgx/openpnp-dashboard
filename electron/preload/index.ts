@@ -24,15 +24,17 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 
 // --------- Preload scripts loading ---------
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     if (condition.includes(document.readyState)) {
-      resolve(true)
+      resolve()
     } else {
-      document.addEventListener('readystatechange', () => {
+      const handler = () => {
         if (condition.includes(document.readyState)) {
-          resolve(true)
+          document.removeEventListener('readystatechange', handler)
+          resolve()
         }
-      })
+      }
+      document.addEventListener('readystatechange', handler)
     }
   })
 }

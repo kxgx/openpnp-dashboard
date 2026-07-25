@@ -47,48 +47,50 @@
   </div>
 </template>
 
-<script>
-import airFlow from "../assets/airFlow.json";
-export default {
-  data() {
-    return {
-      airFlow,
-      status: {
-        done: 0,
-        total: 0,
-        nozzles: [{ id: "N1" }, { id: "N2" }],
-      },
-      progressSize: 100, // default size
-    };
-  },
-  computed: {
-    progress() {
-      if (this.status.total === 0) return 0; // Avoid division by zero
-      return parseInt((this.status.done / this.status.total) * 100);
-    },
-  },
-  mounted() {
-    window.ipcRenderer.on("machine-status-updated", this.handleStatusUpdate);
-    this.updateProgressSize();
-    window.addEventListener("resize", this.updateProgressSize);
-  },
-  beforeDestroy() {
-    window.removeEventListener("resize", this.updateProgressSize);
-  },
-  methods: {
-    handleStatusUpdate(event, newStatus) {
-      console.log("update:", newStatus);
-      this.status = newStatus;
-    },
-    updateProgressSize() {
-      const container = this.$refs.containerRef;
-      if (container) {
-        // Take the smaller dimension to maintain aspect ratio
-        this.progressSize = Math.min(container.clientWidth, container.clientHeight);
-      }
-    },
-  },
-};
+<script setup lang="ts">
+import { computed, onMounted, onBeforeUnmount, reactive } from 'vue'
+import { Vue3Lottie } from 'vue3-lottie'
+import airFlow from '../assets/airFlow.json'
+
+interface Nozzle {
+  id: string
+  isPicking?: boolean
+  isPlacing?: boolean
+  isVacActive?: boolean
+  hasComponent?: boolean
+}
+
+interface MachineStatus {
+  done: number
+  total: number
+  nozzles: Nozzle[]
+  state: string
+}
+
+const status = reactive<MachineStatus>({
+  done: 0,
+  total: 0,
+  nozzles: [{ id: 'N1' }, { id: 'N2' }],
+  state: '',
+})
+
+const progress = computed(() => {
+  if (status.total === 0) return 0
+  return Math.floor((status.done / status.total) * 100)
+})
+
+function handleStatusUpdate(_event: unknown, newStatus: MachineStatus) {
+  console.log('update:', newStatus)
+  Object.assign(status, newStatus)
+}
+
+onMounted(() => {
+  window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
+})
+
+onBeforeUnmount(() => {
+  window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
+})
 </script>
 
 <style scoped>

@@ -4,9 +4,7 @@ import bodyParser from 'body-parser'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
-import { createRequire } from 'node:module'
 
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // The built directory structure
@@ -41,7 +39,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 let win: BrowserWindow | null = null
-let statusServer: express.Express | null = null
+let httpServer: ReturnType<typeof import('http').Server> | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
@@ -106,7 +104,7 @@ function startStatusServer() {
   })
 
   // Start the server
-  const server = serverApp.listen(PORT, () => {
+  httpServer = serverApp.listen(PORT, () => {
     console.log(`Machine Status API running on port ${PORT}`)
   })
 
@@ -124,12 +122,6 @@ async function createWindow() {
     frame: false,
     webPreferences: {
       preload,
-      // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
-      // nodeIntegration: true,
-
-      // Consider using contextBridge.exposeInMainWorld
-      // Read more on https://www.electronjs.org/docs/latest/tutorial/context-isolation
-      // contextIsolation: false,
     },
   })
 
@@ -154,7 +146,7 @@ async function createWindow() {
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 
   // Start the status server
-  statusServer = startStatusServer()
+  startStatusServer()
 }
 
 app.whenReady().then(createWindow)
@@ -186,8 +178,6 @@ ipcMain.handle('open-win', (_, arg) => {
   const childWindow = new BrowserWindow({
     webPreferences: {
       preload,
-      nodeIntegration: true,
-      contextIsolation: false,
     },
   })
 
@@ -200,9 +190,7 @@ ipcMain.handle('open-win', (_, arg) => {
 
 // Optional: Add a handler to stop the server when the app is quitting
 app.on('will-quit', () => {
-  // If you need to do any cleanup when the server is stopping
-  if (statusServer) {
-    // If you want to close the server explicitly
-    // Note: Express server closes automatically when the app quits
+  if (httpServer) {
+    httpServer.close()
   }
 })

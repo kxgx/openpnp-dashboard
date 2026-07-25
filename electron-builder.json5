@@ -1,6 +1,6 @@
 {
   $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  appId: "com.corebb.openpnpdashbaord",
+  appId: "com.corebb.openpnpdashboard"
   asar: true,
   productName: "OpenPnP-Dashboard",
   directories: {
