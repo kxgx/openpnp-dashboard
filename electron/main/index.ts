@@ -2,12 +2,40 @@ import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
+import fs from 'node:fs'
 import express from 'express'
 import dgram from 'node:dgram'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const HTTP_PORT = 10064
 const DISCOVERY_PORT = 10065
+
+// ---- File logger (for packaged app without console) ----
+let logFile: string | null = null
+function log(msg: string) {
+  const ts = new Date().toISOString()
+  const line = `[${ts}] ${msg}\n`
+  if (logFile) {
+    try { fs.appendFileSync(logFile, line, 'utf-8') } catch {}
+  }
+  process.stdout.write(line)
+}
+
+function initLogger() {
+  try {
+    const dir = path.join(app.getPath('userData'), 'logs')
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    logFile = path.join(dir, 'dashboard.log')
+    log('========================================')
+    log('OpenPnP Dashboard started')
+    log(`Log file: ${logFile}`)
+  } catch (e) {
+    try {
+      logFile = path.join(process.cwd(), 'dashboard.log')
+      log(`Log fallback: ${logFile}`)
+    } catch {}
+  }
+}
 
 // ---- In-memory machine status (same structure as C backend) ----
 interface Nozzle {
@@ -39,10 +67,10 @@ const status: MachineStatus = {
 function startDiscovery(localIP: string) {
   const server = dgram.createSocket({ type: 'udp4', reuseAddr: true })
   server.bind(DISCOVERY_PORT, '0.0.0.0', () => {
-    console.log(`UDP discovery on 0.0.0.0:${DISCOVERY_PORT} (host: ${localIP})`)
+    log(`UDP discovery on 0.0.0.0:${DISCOVERY_PORT} (host: ${localIP})`)
   })
   server.on('error', (err) => {
-    console.error('[Network] UDP discovery error:', err)
+    log(`[Network] UDP discovery error: ${err.message || err}`)
   })
   server.on('message', (msg, rinfo) => {
     try {
@@ -54,6 +82,7 @@ function startDiscovery(localIP: string) {
           port: HTTP_PORT,
         })
         server.send(response, rinfo.port, rinfo.address)
+        log(`UDP discover from ${rinfo.address}:${rinfo.port} → responded with ${localIP}:${HTTP_PORT}`)
       }
     } catch { /* ignore malformed packets */ }
   })
@@ -97,12 +126,13 @@ function startHttpServer(localIP: string) {
     // Push update to renderer via IPC
     win?.webContents.send('machine-status-updated', { ...status })
     res.json({ message: 'Status updated successfully' })
+    log(`POST /update-status state=${status.state} done=${status.done}/${status.total}`)
   })
 
   app.listen(HTTP_PORT, '0.0.0.0', () => {
-    console.log(`HTTP server on 0.0.0.0:${HTTP_PORT} (host: ${localIP})`)
+    log(`HTTP server on 0.0.0.0:${HTTP_PORT} (host: ${localIP})`)
   }).on('error', (err) => {
-    console.error('[Network] HTTP server error:', err)
+    log(`[Network] HTTP server error: ${err.message || err}`)
   })
 }
 
@@ -127,7 +157,7 @@ function getLocalIP(): string {
   const real = candidates.filter(c => !virtualPatterns.some(p => c.name.toLowerCase().includes(p)))
 
   const chosen = real.length > 0 ? real[0] : candidates[0]
-  console.log(`[Network] Using IP: ${chosen.address} (${chosen.name}), all candidates: ${candidates.map(c => `${c.name}=${c.address}`).join(', ')}`)
+  log(`[Network] Using IP: ${chosen.address} (${chosen.name}), all candidates: ${candidates.map(c => `${c.name}=${c.address}`).join(', ')}`)
   return chosen.address
 }
 
@@ -149,6 +179,9 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
   process.exit(0)
 }
+
+// Initialize file logger for packaged app
+initLogger()
 
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
@@ -194,13 +227,13 @@ async function createWindow() {
   // Start networking services
   try {
     startHttpServer(localIP)
-  } catch (err) {
-    console.error('[Network] HTTP server failed to start:', err)
+  } catch (err: any) {
+    log(`[Network] HTTP server failed to start: ${err.message || err}`)
   }
   try {
     startDiscovery(localIP)
-  } catch (err) {
-    console.error('[Network] UDP discovery failed to start:', err)
+  } catch (err: any) {
+    log(`[Network] UDP discovery failed to start: ${err.message || err}`)
   }
 }
 
