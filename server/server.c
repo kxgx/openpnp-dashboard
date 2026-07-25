@@ -231,14 +231,14 @@ static int parse_http_request(const char *data, int len, HttpRequest *req) {
     p = strchr(p, ' ');
     if (!p) return 0;
     *p++ = '\0';
-    snprintf(req->method, sizeof(req->method), "%s", method);
+    snprintf(req->method, sizeof(req->method), "%.15s", method);
 
     /* Path */
     while (*p == ' ') p++;
     char *path = p;
     p = strchr(p, ' ');
     if (p) *p = '\0';
-    snprintf(req->path, sizeof(req->path), "%s", path);
+    snprintf(req->path, sizeof(req->path), "%.255s", path);
 
     return 1;
 }
