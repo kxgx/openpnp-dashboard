@@ -1,5 +1,5 @@
-// Load shared Dashboard communication library
-load("../httpBasic.js");
+// Load shared Dashboard communication library (absolute path via OpenPnP scripting API)
+load(scripting.getScriptsDirectory().getAbsolutePath() + "/httpBasic.js");
 
 // Nozzle.BeforePick - nozzle about to pick a component
 var nozzleName = nozzle.getName();

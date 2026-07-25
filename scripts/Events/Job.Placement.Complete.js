@@ -1,5 +1,5 @@
-// Load shared Dashboard communication library
-load("../httpBasic.js");
+// Load shared Dashboard communication library (absolute path via OpenPnP scripting API)
+load(scripting.getScriptsDirectory().getAbsolutePath() + "/httpBasic.js");
 
 // Job.Placement.Complete - update placement progress
 var totalActivePlacements = job.getTotalActivePlacements();
