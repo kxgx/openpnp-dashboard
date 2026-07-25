@@ -106,14 +106,14 @@ function getDashboardUrl() {
 
     if (ip && ip.trim()) {
         url = "http://" + ip.trim() + ":" + DASHBOARD_PORT;
-    } else {
-        // User cancelled — fallback to localhost
-        url = "http://127.0.0.1:" + DASHBOARD_PORT;
+        config.scriptState.put(DASHBOARD_URL_KEY, url);
+        print("[Dashboard] Configured:", url);
+        return url;
     }
 
-    config.scriptState.put(DASHBOARD_URL_KEY, url);
-    print("[Dashboard] Using:", url);
-    return url;
+    // User cancelled — don't cache, will prompt again next time
+    print("[Dashboard] No URL configured, skipping");
+    return null;
 }
 
 /**
@@ -158,5 +158,7 @@ function asyncHttpPostJson(url, jsonData) {
  * POST jsonData to /update-status.
  */
 function postToDashboard(jsonData) {
-    asyncHttpPostJson(getDashboardUrl() + "/update-status", jsonData);
+    var url = getDashboardUrl();
+    if (!url) return;
+    asyncHttpPostJson(url + "/update-status", jsonData);
 }
