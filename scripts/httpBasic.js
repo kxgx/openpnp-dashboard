@@ -1,28 +1,41 @@
-// Dashboard URL cache - discovered via UDP
+// ============================================================
+// OpenPnP Dashboard - Shared Communication Library
+// Provides: discoverDashboard, getDashboardUrl, resetDashboardUrl,
+//           asyncHttpPostJson, postToDashboard
+// ============================================================
+
 var DASHBOARD_URL = null;
 var DISCOVERY_TIMEOUT = 2000;
+var DASHBOARD_PORT = 10064;
+var DISCOVERY_PORT = 10065;
 
-// Discover Dashboard via UDP broadcast
+/**
+ * Discover Dashboard via UDP broadcast on the local network.
+ * @returns {string|null} Dashboard URL (e.g. "http://192.168.1.5:10064") or null
+ */
 function discoverDashboard() {
     var DatagramSocket = java.net.DatagramSocket;
     var InetAddress = java.net.InetAddress;
     var DatagramPacket = java.net.DatagramPacket;
-    
+
     try {
         var socket = new DatagramSocket();
         socket.setSoTimeout(DISCOVERY_TIMEOUT);
         socket.setBroadcast(true);
-        
+
         var msg = JSON.stringify({ type: "discover" });
         var sendBuf = new java.lang.String(msg).getBytes("UTF-8");
-        var sendPacket = new DatagramPacket(sendBuf, sendBuf.length, 
-            InetAddress.getByName("255.255.255.255"), 10065);
+        var sendPacket = new DatagramPacket(
+            sendBuf, sendBuf.length,
+            InetAddress.getByName("255.255.255.255"),
+            DISCOVERY_PORT
+        );
         socket.send(sendPacket);
-        
+
         var recvBuf = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, 1024);
         var recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
         socket.receive(recvPacket);
-        
+
         var data = new java.lang.String(recvPacket.getData(), 0, recvPacket.getLength(), "UTF-8");
         var info = JSON.parse(data);
         socket.close();
@@ -33,75 +46,83 @@ function discoverDashboard() {
     }
 }
 
-// Get Dashboard URL with caching
+/**
+ * Get cached Dashboard URL, or discover + cache it.
+ * Falls back to localhost if discovery fails.
+ * @returns {string} Dashboard base URL
+ */
 function getDashboardUrl() {
     if (DASHBOARD_URL !== null) return DASHBOARD_URL;
-    
-    // Try UDP discovery first
+
     var discovered = discoverDashboard();
     if (discovered !== null) {
         DASHBOARD_URL = discovered;
         print("[Dashboard]", "Discovered at:", DASHBOARD_URL);
         return DASHBOARD_URL;
     }
-    
-    // Fallback to localhost
-    DASHBOARD_URL = "http://127.0.0.1:10064";
+
+    DASHBOARD_URL = "http://127.0.0.1:" + DASHBOARD_PORT;
     print("[Dashboard]", "Using fallback:", DASHBOARD_URL);
     return DASHBOARD_URL;
 }
 
-// Reset cached URL (call if connection fails)
+/**
+ * Reset cached URL. Next getDashboardUrl() call will re-discover.
+ */
 function resetDashboardUrl() {
     DASHBOARD_URL = null;
 }
 
+/**
+ * Send JSON data to Dashboard asynchronously via HTTP POST.
+ * @param {string} url     - Full endpoint URL
+ * @param {object} jsonData - Data to send
+ */
 function asyncHttpPostJson(url, jsonData) {
     var URL = java.net.URL;
-    var HttpURLConnection = java.net.HttpURLConnection;
-    
-    var thread = new java.lang.Thread(function() {
+
+    var thread = new java.lang.Thread(function () {
         try {
             var connection = new URL(url).openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
             connection.setDoOutput(true);
-            
+
             var jsonString = JSON.stringify(jsonData);
             var outputStream = connection.getOutputStream();
             var writer = new java.io.OutputStreamWriter(outputStream, "UTF-8");
             writer.write(jsonString);
             writer.close();
-            
+
             var responseCode = connection.getResponseCode();
             var reader = new java.io.BufferedReader(
                 new java.io.InputStreamReader(connection.getInputStream())
             );
-            
+
             var response = "";
             var inputLine;
             while ((inputLine = reader.readLine()) !== null) {
                 response += inputLine;
             }
             reader.close();
-            
+
             var responseData = JSON.parse(response);
-            print("[Dashboard]", "Status Code: " + responseCode, "Response: " + response);
+            print("[Dashboard]", "OK", responseCode, "-", response);
             return responseData;
         } catch (error) {
             print("[Dashboard]", "Error:", error);
-            // Reset cached URL on failure to retry discovery next time
             resetDashboardUrl();
             return null;
         }
     });
-    
     thread.start();
 }
 
-// Convenience function: auto-discover and post
+/**
+ * Convenience: auto-discover Dashboard and POST jsonData.
+ * @param {object} jsonData - Data to send to /update-status
+ */
 function postToDashboard(jsonData) {
-    var url = getDashboardUrl() + "/update-status";
-    asyncHttpPostJson(url, jsonData);
+    asyncHttpPostJson(getDashboardUrl() + "/update-status", jsonData);
 }
