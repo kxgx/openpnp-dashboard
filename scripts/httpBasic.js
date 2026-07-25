@@ -11,7 +11,7 @@
 var DASHBOARD_URL_KEY = "dashboard-url";
 var DASHBOARD_PORT = 10064;
 var DISCOVERY_PORT = 10065;
-var DISCOVERY_TIMEOUT = 2000;
+var DISCOVERY_TIMEOUT = 500;
 
 /**
  * Discover Dashboard via UDP broadcast.
@@ -22,19 +22,39 @@ function discoverDashboard() {
     var InetAddress = java.net.InetAddress;
     var DatagramPacket = java.net.DatagramPacket;
 
+    var socket = null;
     try {
-        var socket = new DatagramSocket();
+        socket = new DatagramSocket();
         socket.setSoTimeout(DISCOVERY_TIMEOUT);
         socket.setBroadcast(true);
 
         var msg = JSON.stringify({ type: "discover" });
         var sendBuf = new java.lang.String(msg).getBytes("UTF-8");
-        var sendPacket = new DatagramPacket(
+
+        // Broadcast 1: limited broadcast (same subnet only)
+        var packet1 = new DatagramPacket(
             sendBuf, sendBuf.length,
             InetAddress.getByName("255.255.255.255"),
             DISCOVERY_PORT
         );
-        socket.send(sendPacket);
+        socket.send(packet1);
+
+        // Broadcast 2: subnet-directed broadcast (reach other subnets)
+        try {
+            var localHost = InetAddress.getLocalHost();
+            var ip = localHost.getHostAddress();
+            var parts = ip.split("\\.");
+            if (parts.length === 4) {
+                parts[3] = "255";
+                var subnetBcast = InetAddress.getByName(parts.join("."));
+                var packet2 = new DatagramPacket(
+                    sendBuf, sendBuf.length,
+                    subnetBcast,
+                    DISCOVERY_PORT
+                );
+                socket.send(packet2);
+            }
+        } catch (e2) { /* localhost lookup failed, skip subnet broadcast */ }
 
         var recvBuf = java.lang.reflect.Array.newInstance(java.lang.Byte.TYPE, 1024);
         var recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
@@ -45,7 +65,9 @@ function discoverDashboard() {
         socket.close();
         return "http://" + info.host + ":" + info.port;
     } catch (e) {
-        try { socket.close(); } catch (e2) {}
+        if (socket) {
+            try { socket.close(); } catch (e2) {}
+        }
         return null;
     }
 }
