@@ -31,15 +31,7 @@ function discoverDashboard() {
         var msg = JSON.stringify({ type: "discover" });
         var sendBuf = new java.lang.String(msg).getBytes("UTF-8");
 
-        // 1. localhost unicast (same machine, always works)
-        var packetLocal = new DatagramPacket(
-            sendBuf, sendBuf.length,
-            InetAddress.getByName("127.0.0.1"),
-            DISCOVERY_PORT
-        );
-        socket.send(packetLocal);
-
-        // 2. Subnet-directed broadcast (same subnet, different machine)
+        // 1. Subnet-directed broadcast (same subnet)
         try {
             var localHost = InetAddress.getLocalHost();
             var ip = localHost.getHostAddress();
@@ -56,7 +48,7 @@ function discoverDashboard() {
             }
         } catch (e2) { /* skip subnet broadcast */ }
 
-        // 3. Limited broadcast (all subnets)
+        // 2. Limited broadcast (cross-subnet)
         var packetGlobal = new DatagramPacket(
             sendBuf, sendBuf.length,
             InetAddress.getByName("255.255.255.255"),
