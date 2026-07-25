@@ -169,4 +169,6 @@ function postToDashboard(jsonData) {
 var _initUrl = getDashboardUrl();
 if (_initUrl) {
     print("[Dashboard] Ready:", _initUrl);
+    // Send initial heartbeat so Dashboard shows "已连接"
+    asyncHttpPostJson(_initUrl + "/update-status", {});
 }
