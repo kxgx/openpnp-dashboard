@@ -10,6 +10,18 @@ const SERVER_BINARY = process.platform === 'win32' ? 'dashboard-server.exe' : 'd
 const HTTP_PORT = 10064
 const DISCOVERY_PORT = 10065
 
+function getServerPath(): string {
+  const base = app.getAppPath()
+  // If running from asar, binary is unpacked to app.asar.unpacked/
+  const root = base.endsWith('.asar') ? base + '.unpacked' : base
+  return path.join(root, 'server', SERVER_BINARY)
+}
+
+function getAppRoot(): string {
+  const base = app.getAppPath()
+  return base.endsWith('.asar') ? base + '.unpacked' : base
+}
+
 function getLocalIP(): string {
   const interfaces = os.networkInterfaces()
   for (const name of Object.keys(interfaces)) {
@@ -79,11 +91,12 @@ async function createWindow() {
   })
 
   // Start the C backend (auto-compile if binary missing)
-  const serverPath = path.join(process.env.APP_ROOT, 'server', SERVER_BINARY)
+  let serverPath = getServerPath()
+  let appRoot = getAppRoot()
   if (!existsSync(serverPath)) {
     console.log('[server] Binary not found, trying auto-compile...')
     try {
-      const compileScript = path.join(process.env.APP_ROOT, 'build', 'compile-server.mjs')
+      const compileScript = path.join(appRoot, 'build', 'compile-server.mjs')
       execSync(`node "${compileScript}"`, { stdio: 'inherit' })
     } catch {
       console.warn('[server] Auto-compile failed. Run `npm run build:server` manually.')
