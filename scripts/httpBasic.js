@@ -175,13 +175,18 @@ function postToDashboard(jsonData) {
 }
 
 // ============================================================
-// Auto-init + continuous heartbeat (every 8s)
+// Auto-init + continuous heartbeat (every 2s)
 // ============================================================
 var _initUrl = getDashboardUrl();
 if (_initUrl) {
     print("[Dashboard] Ready:", _initUrl);
-    // Initial heartbeat
-    asyncHttpPostJson(_initUrl + "/update-status", {});
+    // Initial heartbeat — send cached merged state (not empty)
+    var _hbData = {};
+    try {
+        var _cached = config.scriptState.get("dashboard-last-status");
+        if (_cached) _hbData = JSON.parse(_cached);
+    } catch (e) {}
+    asyncHttpPostJson(_initUrl + "/update-status", _hbData);
 
     // Periodic heartbeat resends last known state
     var Timer = java.util.Timer;
