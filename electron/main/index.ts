@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
-import { spawn, ChildProcess } from 'node:child_process'
+import { spawn, execSync, ChildProcess } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
@@ -77,8 +78,20 @@ async function createWindow() {
     return { action: 'deny' }
   })
 
-  // Start the C backend
+  // Start the C backend (auto-compile if binary missing)
   const serverPath = path.join(process.env.APP_ROOT, 'server', SERVER_BINARY)
+  if (!existsSync(serverPath)) {
+    console.log('[server] Binary not found, trying auto-compile...')
+    try {
+      const compileScript = path.join(process.env.APP_ROOT, 'build', 'compile-server.mjs')
+      execSync(`node "${compileScript}"`, { stdio: 'inherit' })
+    } catch {
+      console.warn('[server] Auto-compile failed. Run `npm run build:server` manually.')
+      console.warn('[server] Dashboard will show "未连接" until the server is started.')
+      return
+    }
+  }
+
   serverProcess = spawn(serverPath, [], { stdio: 'pipe' })
   serverProcess.stdout?.on('data', (data) => console.log(`[server] ${data}`))
   serverProcess.stderr?.on('data', (data) => console.error(`[server] ${data}`))
