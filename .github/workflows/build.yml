@@ -35,6 +35,9 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Compile C Backend
+        run: npm run build:server
+
       - name: Build Release Files
         run: npm run build -- --${{ matrix.arch }}
         env:

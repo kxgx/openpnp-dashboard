@@ -25,6 +25,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build && electron-builder",
+    "build:server": "node scripts/compile-server.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {
@@ -42,8 +43,6 @@
     "vue-tsc": "^2.0.0"
   },
   "dependencies": {
-    "body-parser": "^1.20.3",
-    "express": "^4.21.2",
     "tailwindcss-motion": "^1.0.0",
     "vue3-lottie": "^3.3.1"
   }

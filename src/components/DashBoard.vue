@@ -97,9 +97,16 @@ const progress = computed(() => {
   return Math.floor((status.done / status.total) * 100)
 })
 
-function handleStatusUpdate(_event: unknown, newStatus: MachineStatus) {
-  console.log('update:', newStatus)
-  Object.assign(status, newStatus)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+async function pollStatus() {
+  try {
+    const res = await fetch('http://127.0.0.1:10064/status')
+    if (res.ok) {
+      const data = await res.json()
+      Object.assign(status, data)
+    }
+  } catch { /* server not ready yet */ }
 }
 
 function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
@@ -107,13 +114,17 @@ function handleConnectionInfo(_event: unknown, info: ConnectionInfo) {
 }
 
 onMounted(() => {
-  window.ipcRenderer.on('machine-status-updated', handleStatusUpdate)
   window.ipcRenderer.on('connection-info', handleConnectionInfo)
+  pollTimer = setInterval(pollStatus, 500)
+  pollStatus()
 })
 
 onBeforeUnmount(() => {
-  window.ipcRenderer.off('machine-status-updated', handleStatusUpdate)
   window.ipcRenderer.off('connection-info', handleConnectionInfo)
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 })
 </script>
 
