@@ -17,11 +17,6 @@
         X: {{ coord.x?.toFixed(1) }} Y: {{ coord.y?.toFixed(1) }} Z: {{ coord.z?.toFixed(1) }}
       </div>
     </div>
-
-    <!-- Overlay: loading indicator -->
-    <div v-if="loading" class="absolute inset-0 flex items-center justify-center z-20 bg-black/50">
-      <div class="text-gray-400 text-sm">加载模型中...</div>
-    </div>
   </div>
 </template>
 
@@ -29,7 +24,6 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 defineEmits<{ back: [] }>()
 
@@ -51,7 +45,6 @@ const props = defineProps<{
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const loading = ref(true)
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
@@ -128,12 +121,10 @@ function buildProceduralModel() {
 
   // === Y gantry pillars (fixed) ===
   const pillarGeom = new THREE.BoxGeometry(0.06, 0.55, 0.06)
-  // Left pillar
   const leftPillar = new THREE.Mesh(pillarGeom, frameMaterial)
   leftPillar.position.set(-0.65, -0.05, -0.5)
   leftPillar.castShadow = true
   scene.add(leftPillar)
-  // Right pillar
   const rightPillar = new THREE.Mesh(pillarGeom, frameMaterial)
   rightPillar.position.set(0.65, -0.05, -0.5)
   rightPillar.castShadow = true
@@ -153,16 +144,13 @@ function buildProceduralModel() {
   xGantryGroup.position.set(0, 0.24, -0.45)
   scene.add(xGantryGroup)
 
-  // X beam
   const xBeam = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.04, 0.03), frameMaterial)
   xGantryGroup.add(xBeam)
 
-  // X rail
   const xRail = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.015, 0.025), railMaterial)
   xRail.position.set(0, -0.02, 0)
   xGantryGroup.add(xRail)
 
-  // Motor mounts on beam ends
   const motorGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.08, 8)
   const motorL = new THREE.Mesh(motorGeom, accentMaterial)
   motorL.position.set(-0.62, 0, 0)
@@ -178,11 +166,9 @@ function buildProceduralModel() {
   zHeadGroup.position.set(0, -0.08, 0)
   xGantryGroup.add(zHeadGroup)
 
-  // Carriage plate
   const carriage = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.06), frameMaterial)
   zHeadGroup.add(carriage)
 
-  // Z column
   const zColumn = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.03), railMaterial)
   zColumn.position.set(0, -0.07, 0)
   zHeadGroup.add(zColumn)
@@ -192,7 +178,6 @@ function buildProceduralModel() {
   n1Group.position.set(-0.015, -0.16, 0)
   n1Group.name = 'N1'
   zHeadGroup.add(n1Group)
-
   const n1Body = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.04, 8), nozzleMaterial)
   n1Body.position.y = 0.02
   n1Group.add(n1Body)
@@ -205,7 +190,6 @@ function buildProceduralModel() {
   n2Group.position.set(0.015, -0.16, 0)
   n2Group.name = 'N2'
   zHeadGroup.add(n2Group)
-
   const n2Body = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.04, 8), nozzleMaterial)
   n2Body.position.y = 0.02
   n2Group.add(n2Body)
@@ -222,8 +206,6 @@ function buildProceduralModel() {
   const camLens = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.03, 8), railMaterial)
   camLens.position.y = -0.045
   camGroup.add(camLens)
-
-  loading.value = false
 }
 
 function animate() {
@@ -255,16 +237,13 @@ function onResize() {
 // Watch coord changes
 watch(() => props.coord, (c) => {
   if (!c) return
-  // Map OpenPnP mm coords to scene units (scale 1mm = 0.001 scene units)
-  // X gantry moves on Y rail, Z head moves on X beam
   if (xGantryGroup && c.y !== undefined) {
-    xGantryGroup.position.z = -0.45 + (c.y - 250) * 0.0008 // center around 250mm
+    xGantryGroup.position.z = -0.45 + (c.y - 250) * 0.0008
   }
   if (zHeadGroup && c.x !== undefined) {
     zHeadGroup.position.x = (c.x - 250) * 0.0008
   }
   if (zHeadGroup && c.z !== undefined) {
-    // Z: nozzle down/up
     const nozzles = zHeadGroup.children.filter(g => (g as THREE.Group).name === 'N1' || (g as THREE.Group).name === 'N2')
     for (const n of nozzles) {
       n.position.y = -0.16 - c.z * 0.001
