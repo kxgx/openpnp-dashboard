@@ -134,6 +134,10 @@ static void build_status_json(char *buf, int buflen) {
     UNLOCK();
 }
 
+/* Forward declarations for range-limited JSON helpers */
+static int json_get_bool_range(const char *start, const char *end, const char *key);
+static void json_get_str_range(const char *start, const char *end, const char *key, char *out, int outlen);
+
 /* ---- Parse /update-status JSON and update state ---- */
 static void update_status(const char *json) {
     LOCK();
@@ -315,13 +319,28 @@ static void handle_http(sock_t client) {
     close_socket(client);
 }
 
+/* Worker thread wrapper for handle_http */
+static THREAD_RET http_worker(THREAD_ARG arg) {
+#ifdef _WIN32
+    sock_t client = (SOCKET)(uintptr_t)arg;
+#else
+    sock_t client = (sock_t)(intptr_t)arg;
+#endif
+    handle_http(client);
+    return 0;
+}
+
 /* ---- HTTP server thread ---- */
 static THREAD_RET http_thread(THREAD_ARG arg) {
     (void)arg;
     sock_t server = socket(AF_INET, SOCK_STREAM, 0);
+#ifdef _WIN32
+    if (server == INVALID_SOCKET) {
+#else
     if (server == -1) {
+#endif
         fprintf(stderr, "HTTP: socket() failed\n");
-        return 1;
+        return (THREAD_RET)1;
     }
 
     int opt = 1;
@@ -340,13 +359,13 @@ static THREAD_RET http_thread(THREAD_ARG arg) {
     if (bind(server, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         fprintf(stderr, "HTTP: bind port %d failed\n", HTTP_PORT);
         close_socket(server);
-        return 1;
+        return (THREAD_RET)1;
     }
 
     if (listen(server, 10) < 0) {
         fprintf(stderr, "HTTP: listen() failed\n");
         close_socket(server);
-        return 1;
+        return (THREAD_RET)1;
     }
 
     printf("HTTP server listening on 0.0.0.0:%d\n", HTTP_PORT);
@@ -409,9 +428,13 @@ static int get_local_ip(char *ip_buf, int buflen) {
 static THREAD_RET discovery_thread(THREAD_ARG arg) {
     (void)arg;
     sock_t sock = socket(AF_INET, SOCK_DGRAM, 0);
+#ifdef _WIN32
+    if (sock == INVALID_SOCKET) {
+#else
     if (sock == -1) {
+#endif
         fprintf(stderr, "Discovery: socket() failed\n");
-        return 1;
+        return (THREAD_RET)1;
     }
 
     int opt = 1;
@@ -430,7 +453,7 @@ static THREAD_RET discovery_thread(THREAD_ARG arg) {
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         fprintf(stderr, "Discovery: bind port %d failed\n", DISCOVERY_PORT);
         close_socket(sock);
-        return 1;
+        return (THREAD_RET)1;
     }
 
     char local_ip[64];
