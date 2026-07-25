@@ -49,7 +49,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, reactive } from 'vue'
-import { Vue3Lottie } from 'vue3-lottie'
 import airFlow from '../assets/airFlow.json'
 
 interface Nozzle {
