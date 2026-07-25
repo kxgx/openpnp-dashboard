@@ -7,6 +7,5 @@ var activePlacements = job.getActivePlacements();
 
 postToDashboard({
     done: totalActivePlacements - activePlacements,
-    total: totalActivePlacements,
-    state: ""
+    total: totalActivePlacements
 });

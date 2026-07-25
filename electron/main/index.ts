@@ -82,13 +82,13 @@ function startHttpServer(localIP: string) {
     if (body.total !== undefined) status.total = body.total
     if (body.state !== undefined) status.state = body.state
     if (body.nozzles) {
-      for (let i = 0; i < body.nozzles.length && i < status.nozzles.length; i++) {
-        const n = body.nozzles[i]
-        if (n.id) status.nozzles[i].id = n.id
-        if (n.isPicking !== undefined) status.nozzles[i].isPicking = n.isPicking
-        if (n.isPlacing !== undefined) status.nozzles[i].isPlacing = n.isPlacing
-        if (n.isVacActive !== undefined) status.nozzles[i].isVacActive = n.isVacActive
-        if (n.hasComponent !== undefined) status.nozzles[i].hasComponent = n.hasComponent
+      for (const n of body.nozzles) {
+        const existing = status.nozzles.find(s => s.id === n.id)
+        if (!existing) continue
+        if (n.isPicking !== undefined) existing.isPicking = n.isPicking
+        if (n.isPlacing !== undefined) existing.isPlacing = n.isPlacing
+        if (n.isVacActive !== undefined) existing.isVacActive = n.isVacActive
+        if (n.hasComponent !== undefined) existing.hasComponent = n.hasComponent
       }
     }
     // Push update to renderer via IPC
