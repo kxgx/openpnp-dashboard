@@ -68,12 +68,14 @@ function asyncHttpPostJson(url, jsonData) {
     thread.start();
 }
 
-var activePlacements = job.getActivePlacements(job.getRootPanelLocation());
-var totalActivePlacements = job.getTotalActivePlacements(job.getRootPanelLocation());
+// Use latest API (no deprecated getRootPanelLocation parameter)
+var activePlacements = job.getActivePlacements();
+var totalActivePlacements = job.getTotalActivePlacements();
 
 var postData = {
     done: totalActivePlacements - activePlacements,
     total: totalActivePlacements,
+    state: "",
 };
 
 asyncHttpPostJson(getDashboardUrl() + "/update-status", postData);
