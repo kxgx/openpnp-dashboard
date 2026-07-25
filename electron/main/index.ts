@@ -41,6 +41,9 @@ function startDiscovery(localIP: string) {
   server.bind(DISCOVERY_PORT, '0.0.0.0', () => {
     console.log(`UDP discovery on 0.0.0.0:${DISCOVERY_PORT} (host: ${localIP})`)
   })
+  server.on('error', (err) => {
+    console.error('[Network] UDP discovery error:', err)
+  })
   server.on('message', (msg, rinfo) => {
     try {
       const data = JSON.parse(msg.toString())
@@ -98,6 +101,8 @@ function startHttpServer(localIP: string) {
 
   app.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`HTTP server on 0.0.0.0:${HTTP_PORT} (host: ${localIP})`)
+  }).on('error', (err) => {
+    console.error('[Network] HTTP server error:', err)
   })
 }
 
@@ -105,14 +110,25 @@ function startHttpServer(localIP: string) {
 
 function getLocalIP(): string {
   const interfaces = os.networkInterfaces()
+  const candidates: { name: string; address: string }[] = []
+
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]!) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address
+        candidates.push({ name, address: iface.address })
       }
     }
   }
-  return '127.0.0.1'
+
+  if (candidates.length === 0) return '127.0.0.1'
+
+  // Skip virtual / tunnel adapters (Hyper-V, VMware, VirtualBox, VPN, WSL, etc.)
+  const virtualPatterns = ['hyper-v', 'vmware', 'virtualbox', 'v ethernet', 'vpn', 'tunnel', 'wsl', 'docker', 'pseudo']
+  const real = candidates.filter(c => !virtualPatterns.some(p => c.name.toLowerCase().includes(p)))
+
+  const chosen = real.length > 0 ? real[0] : candidates[0]
+  console.log(`[Network] Using IP: ${chosen.address} (${chosen.name}), all candidates: ${candidates.map(c => `${c.name}=${c.address}`).join(', ')}`)
+  return chosen.address
 }
 
 // ---- Electron App ----
@@ -176,8 +192,16 @@ async function createWindow() {
   })
 
   // Start networking services
-  startHttpServer(localIP)
-  startDiscovery(localIP)
+  try {
+    startHttpServer(localIP)
+  } catch (err) {
+    console.error('[Network] HTTP server failed to start:', err)
+  }
+  try {
+    startDiscovery(localIP)
+  } catch (err) {
+    console.error('[Network] UDP discovery failed to start:', err)
+  }
 }
 
 app.whenReady().then(createWindow)
