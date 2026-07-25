@@ -83,7 +83,48 @@
         <span>{{ connectionInfo.host }}:{{ connectionInfo.httpPort }}</span>
         <span class="text-gray-600">| UDP :{{ connectionInfo.discoveryPort }}</span>
       </div>
-      <span class="text-gray-600 text-xs">{{ connected ? '已连接' : '未连接' }}</span>
+      <div class="flex items-center gap-3">
+        <span class="text-gray-600 text-xs">{{ connected ? '已连接' : '未连接' }}</span>
+        <button
+          class="px-2 py-0.5 rounded text-xs transition-colors"
+          :class="debugMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-gray-600 hover:text-gray-400'"
+          @click="debugMode = !debugMode"
+          title="切换调试模式"
+        >⚙</button>
+      </div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div v-if="debugMode" class="z-30 mx-[3%] mb-[1%] p-3 rounded-lg bg-black/60 border border-gray-700 text-xs font-mono overflow-auto max-h-[30vh]"
+      :style="{ fontSize: `clamp(0.5rem, 1vw, 0.875rem)` }">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-amber-400 font-semibold">🔍 调试面板</span>
+        <span class="text-gray-500">{{ lastUpdate }}</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-gray-500 mb-1">连接状态</div>
+          <div class="text-green-400">{{ connected ? '✅ 已连接' : '❌ 未连接' }}</div>
+          <div class="text-gray-500 mt-1">DashBoard @ {{ connectionInfo.host }}</div>
+          <div class="text-gray-600">HTTP :{{ connectionInfo.httpPort }} | UDP :{{ connectionInfo.discoveryPort }}</div>
+        </div>
+        <div>
+          <div class="text-gray-500 mb-1">机器状态</div>
+          <div><span class="text-gray-500">state:</span> <span :class="{'text-sky-400': status.state==='RUNNING','text-green-400': status.state==='COMPLETED','text-red-400': status.state==='ERROR'}">{{ status.state || '(待机)' }}</span></div>
+          <div><span class="text-gray-500">progress:</span> {{ status.done }}/{{ status.total }} ({{ progress }}%)</div>
+          <div v-for="n in status.nozzles" :key="n.id" class="ml-2">
+            <span class="text-gray-500">{{ n.id }}:</span>
+            <span :class="n.isVacActive ? 'text-sky-400' : 'text-gray-700'">VAC</span>
+            <span :class="n.isPicking ? 'text-amber-400' : 'text-gray-700'"> PICK</span>
+            <span :class="n.isPlacing ? 'text-emerald-400' : 'text-gray-700'"> PLACE</span>
+            <span :class="n.hasComponent ? 'text-purple-400' : 'text-gray-700'"> PART</span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-2">
+        <div class="text-gray-500 mb-1">原始数据 (JSON)</div>
+        <pre class="text-green-400 whitespace-pre-wrap">{{ debugJson }}</pre>
+      </div>
     </div>
   </div>
 </template>
@@ -168,9 +209,18 @@ const elapsedText = computed(() => {
 let disconnectTimer: ReturnType<typeof setTimeout> | null = null
 const connected = ref(true)
 
+// ---- Debug mode ----
+const debugMode = ref(false)
+const lastUpdate = ref('等待数据...')
+
+const debugJson = computed(() => {
+  return JSON.stringify(status, null, 2)
+})
+
 function handleStatusUpdate(_event: unknown, data: MachineStatus) {
   Object.assign(status, data)
   connected.value = true
+  lastUpdate.value = new Date().toLocaleTimeString()
   // Reset disconnect timeout: if no update within 3s, mark disconnected
   if (disconnectTimer) clearTimeout(disconnectTimer)
   disconnectTimer = setTimeout(() => { connected.value = false }, 3000)
